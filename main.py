@@ -35,10 +35,36 @@ class Laudo(Base):
 
 Base.metadata.create_all(bind=engine)
 
+# --- FUNÇÃO PARA CRIAR DADOS DE TESTE AUTOMATICAMENTE ---
+def criar_dados_iniciais():
+    db = SessionLocal()
+    try:
+        # Verifica se já existe a empresa de teste
+        empresa_existe = db.query(Empresa).filter(Empresa.nome_fantasia == "Hidráulica Silva & Afins").first()
+        if not empresa_existe:
+            empresa_teste = Empresa(
+                nome_fantasia="Hidráulica Silva & Afins", 
+                url_logo="https://via.placeholder.com/150"
+            )
+            db.add(empresa_teste)
+            db.commit()
+            db.refresh(empresa_teste)
+            
+            usuario_teste = Usuario(
+                empresa_id=empresa_teste.id, 
+                email="gabriel@teste.com", 
+                senha="123"
+            )
+            db.add(usuario_teste)
+            db.commit()
+    finally:
+        db.close()
+
+criar_dados_iniciais()
+
 # --- INICIALIZAÇÃO DA API ---
 app = FastAPI(title="API Sistema de Laudos Multi-Tenant")
 
-# Permite que seu front-end acesse a API sem bloqueios de segurança
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,7 +80,6 @@ def get_db():
     finally:
         db.close()
 
-# --- ESTRUTURAS DE DADOS (SCHEMAS) ---
 class LoginRequest(BaseModel):
     email: str
     senha: str
@@ -65,7 +90,6 @@ class LoginRequest(BaseModel):
 def home():
     return {"mensagem": "API de Laudos do Gabriel está online e conectada ao banco!"}
 
-# Rota de Login simples
 @app.post("/login")
 def fazer_login(dados: LoginRequest, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == dados.email, Usuario.senha == dados.senha).first()
@@ -81,7 +105,6 @@ def fazer_login(dados: LoginRequest, db: Session = Depends(get_db)):
         "url_logo": empresa.url_logo
     }
 
-# Rota para salvar um laudo vinculado à empresa correta
 @app.post("/laudos")
 def salvar_laudo(laudo: dict, db: Session = Depends(get_db)):
     novo_laudo = Laudo(
@@ -95,7 +118,6 @@ def salvar_laudo(laudo: dict, db: Session = Depends(get_db)):
     db.refresh(novo_laudo)
     return {"mensagem": "Laudo salvo com sucesso!", "id_laudo": novo_laudo.id}
 
-# Rota para listar apenas os laudos da empresa logada
 @app.get("/laudos/{empresa_id}")
 def listar_laudos(empresa_id: int, db: Session = Depends(get_db)):
     laudos = db.query(Laudo).filter(Laudo.empresa_id == empresa_id).all()
