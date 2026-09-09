@@ -59,12 +59,6 @@ class LoginRequest(BaseModel):
     email: str
     senha: str
 
-class LaudoCreate(BaseModel.ConfigDict):
-    empresa_id: int
-    os_numero: str
-    cliente: str
-    dados_inspecao: str
-
 # --- ROTAS DA API ---
 
 @app.get("/")
